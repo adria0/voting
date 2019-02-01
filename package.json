@@ -1,0 +1,23 @@
+{
+  "name": "votingcircuit",
+  "version": "0.0.1",
+  "description": "Voting circuit",
+  "main": "index.js",
+  "scripts": {
+    "test": "mocha --max-old-space-size=4000"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "GPL-3.0",
+  "repository": {
+    "type": "git",
+    "url": ""
+  },
+  "dependencies": {
+    "big-integer": "^1.6.40",
+    "circom": "0.0.24",
+    "circomlib": "0.0.5",
+    "eslint-plugin-mocha": "^5.2.0",
+    "snarkjs": "^0.1.9"
+  }
+}
