@@ -2,7 +2,6 @@ const chai = require("chai");
 const path = require("path");
 const snarkjs = require("snarkjs");
 const compiler = require("circom");
-//const bigInt = require("big-integer");
 const createBlakeHash = require("blake-hash");
 const bigInt = require("snarkjs").bigInt;
 
@@ -13,32 +12,8 @@ const eddsa = require("circomlib").eddsa;
 const fs = require("fs");
 const assert = chai.assert;
 
-describe("test", function () {
+describe("FranchiseProof", function () {
     this.timeout(100000);
-
-    it("BabyPbkFromPvk", async () => {    
-
-        const rawpvk = Buffer.from("0001020304050607080900010203040506070809000102030405060708090021", "hex");
-        const pvk    = createBlakeHash("blake512").update(rawpvk).digest().slice(0,32);
-        const S      = bigInt.leBuff2int(pvk).shr(3);
-        const A      = babyJub.mulPointEscalar(babyJub.Base8, S);
-
-        const cirDef = await compiler(path.join(__dirname, "circuits", "testbabypbkfrompvk.circom"));
-        circuit      = new snarkjs.Circuit(cirDef);
-
-        const input = {
-            in : S,
-            Ax : A[0],
-            Ay : A[1]
-        }
-
-        const w = circuit.calculateWitness(input);
-        assert(circuit.checkWitness(w));
-    })
-
-    it("Voting", async () => {    
-
-    })
 
 /*
     it("test1", async () => {
@@ -52,7 +27,7 @@ describe("test", function () {
     })
 
     it("test2", async () => {
-        const cirDef = await compiler(path.join(__dirname, "circuits", "testvoting.circom"));
+        const cirDef = await compiler(path.join(__dirname, "circuits", "franchiseproof.circom"));
         circuit = new snarkjs.Circuit(cirDef);
         console.log("NConstrains: " + circuit.nConstraints);
 

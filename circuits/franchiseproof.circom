@@ -4,30 +4,9 @@ include "../node_modules/circomlib/circuits/escalarmulfix.circom";
 include "../node_modules/circomlib/circuits/smt/smtverifier.circom";
 include "../node_modules/circomlib/circuits/smt/smtprocessor.circom";
 
-template BabyPbkFromPvk() {
-    signal private input  in;
-    signal         output Ax;
-    signal         output Ay;
+include "babypbk.circom";
 
-    var BASE8 = [
-        17777552123799933955779906779655732241715742912184938656739573121738514868268,
-        2626589144620713026669568689430873010625803728049924121243784502389097019475
-    ];
-
-    component pvkBits = Num2Bits(253);
-    pvkBits.in <== in;
-
-    component mulFix = EscalarMulFix(253, BASE8);
-
-    var i;
-    for (i=0; i<253; i++) {
-        mulFix.e[i] <== pvkBits.out[i];
-    }
-    Ax  <== mulFix.out[0];
-    Ay  <== mulFix.out[1];
-}
-
-template Voting(nLevels) {
+template FranchiseProof(nLevels) {
 
     signal private input privateKey;
     signal         input votingId;
@@ -44,7 +23,7 @@ template Voting(nLevels) {
 
     // -- extract public key -------------------------------------------
 
-    component pbk = BabyPbkFromPvk();
+    component pbk = BabyPbk();
     pbk.in <== privateKey;
 
     // -- verify vote signature  ---------------------------------------
