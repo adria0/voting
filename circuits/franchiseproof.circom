@@ -9,18 +9,20 @@ include "babypbk.circom";
 
 template FranchiseProof(nLevels) {
 
-    signal private input privateKey;
-    signal         input votingId;
-    signal         input nullifier;
-
     signal         input censusRoot;
-    signal         input censusSiblings[nLevels];
-    signal         input censusIdx;
+    signal private input censusSiblings[nLevels];
+    signal private input censusIdx;
 
     signal private input voteSigS;
     signal private input voteSigR8x;
     signal private input voteSigR8y;
+
     signal         input voteValue;
+
+    signal private input privateKey;
+    
+    signal         input votingId;
+    signal         input nullifier;
 
     // -- extract public key -------------------------------------------
 
