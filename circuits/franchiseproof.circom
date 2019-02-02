@@ -1,6 +1,7 @@
 include "../node_modules/circomlib/circuits/mimc.circom";
 include "../node_modules/circomlib/circuits/bitify.circom";
 include "../node_modules/circomlib/circuits/escalarmulfix.circom";
+include "../node_modules/circomlib/circuits/eddsamimc.circom";
 include "../node_modules/circomlib/circuits/smt/smtverifier.circom";
 include "../node_modules/circomlib/circuits/smt/smtprocessor.circom";
 
@@ -49,11 +50,12 @@ template FranchiseProof(nLevels) {
     smtCensusInclusion.enabled <== 1;
 
     // check for inclusion (0 => VERIFY INCLUSION, 1=>VERIFY EXCLUSION)
-    // *old* parameters are not used (only works for EXCLUSION case)
     smtCensusInclusion.fnc <== 0;
-    smtSignKeyInclusion.oldKey <== 0;
-    smtSignKeyInclusion.oldValue <== 0;
-    smtSignKeyInclusion.isOld0 <== 0;
+
+    // *old* parameters are not used (only works for EXCLUSION case)
+    smtCensusInclusion.oldKey <== 0;
+    smtCensusInclusion.oldValue <== 0;
+    smtCensusInclusion.isOld0 <== 0;
 
     // root and siblings
     smtCensusInclusion.root <== censusRoot;
@@ -62,7 +64,7 @@ template FranchiseProof(nLevels) {
     }
 
     // key and value 
-    smtSignKeyInclusion.key <== censusIdx;
+    smtCensusInclusion.key <== censusIdx;
 
     component hashAxAy = MultiMiMC7(2, 91);
     hashAxAy.in[0] <== pbk.Ax;
@@ -70,7 +72,6 @@ template FranchiseProof(nLevels) {
     smtCensusInclusion.value <== hashAxAy.out;
 
     // -- verify nullifier integrity -----------------------------------
-
     component hashPvkVid = MultiMiMC7(2, 91);
     hashPvkVid.in[0] <== privateKey;
     hashPvkVid.in[1] <== votingId ;
