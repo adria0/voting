@@ -1,3 +1,3 @@
 include "franchiseproof.circom";
 
-component main = FranchiseProof(10);
+component main = FranchiseProof(140);

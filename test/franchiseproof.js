@@ -2,14 +2,7 @@ const chai = require("chai");
 const path = require("path");
 const snarkjs = require("snarkjs");
 const compiler = require("circom");
-const createBlakeHash = require("blake-hash");
 const bigInt = require("snarkjs").bigInt;
-
-const mimc7 = require("circomlib").mimc7;
-const smt = require("circomlib").smt;
-const babyJub = require("circomlib").babyjub;
-const eddsa = require("circomlib").eddsa;
-const fs = require("fs");
 const assert = chai.assert;
 
 const fpcensus = require("../src/franchiseproof").fpcensus;
@@ -17,11 +10,6 @@ const fpvoter = require("../src/franchiseproof").fpvoter;
 
 describe("FranchiseProof", function () {
     this.timeout(200000);
-
-    const derivePvk = (rawpvk) => {
-        const pvk    = eddsa.pruneBuffer(createBlakeHash("blake512").update(rawpvk).digest().slice(0,32));
-        return bigInt.leBuff2int(pvk).shr(3);
-    }
 
     it("Test franchise proof", async () => {
         const voter = new fpvoter(

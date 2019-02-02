@@ -5,7 +5,6 @@ const compiler = require("circom");
 const createBlakeHash = require("blake-hash");
 const bigInt = require("snarkjs").bigInt;
 const eddsa = require("circomlib").eddsa;
-const babyJub = require("circomlib").babyjub;
 const assert = chai.assert;
 
 describe("BabyPbk", function () {
