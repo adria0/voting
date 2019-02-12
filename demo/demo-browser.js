@@ -2,9 +2,11 @@ import "babel-polyfill"
 const { FPVoter, FPCensus } = require("../src/franchiseproof.js")
 const zkSnark = require("snarkjs")
 const { bigInt } = zkSnark
-const jsonCircuit = JSON.parse(require("./circuit.json"))
-const jsonProvingKey = JSON.parse(require("./proving_key.json"))
-const jsonVerificationKey = JSON.parse(require("./verification_key.json"))
+
+// Stored as an all-string JSON
+const serializedCircuit = require("./circuit.json")
+const serializedProvingKey = require("./proving_key.json")
+const serializedVerificationKey = require("./verification_key.json")
 
 ///////////////////////////////////////////////////////////////////////////////
 // BIG INT HELPERS
@@ -26,6 +28,14 @@ function parseBigInts(o) {
 }
 
 ///////////////////////////////////////////////////////////////////////////////
+// DATA EN/DECODING HELPERS
+
+function deserializeData(payload) {
+    return parseBigInts(JSON.parse(payload))
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// WORKERS
 
 async function generateWitness(circuit) {
     // ORGANIZER SIDE
@@ -62,11 +72,8 @@ function createProof(provingKey, witness) {
     // create proof ---------------------------------------------------------
     console.log("😺 createProof() ...")
     console.time("😺 createProof()")
-    // const provingKey = parseBigInts(JSON.parse(fs.readFileSync("proving_key.json", "utf8")))
     const { protocol } = provingKey
     const { proof, publicSignals } = zkSnark[protocol].genProof(provingKey, witness)
-    // fs.writeFileSync("proof.json", JSON.stringify(stringifyBigInts(proof), null, 1), "utf-8")
-    // fs.writeFileSync("public_signals.json", JSON.stringify(stringifyBigInts(publicSignals), null, 1), "utf-8")
     console.timeEnd("😺 createProof()")
 
     return {
@@ -86,19 +93,20 @@ function isProofValid(verificationKey, proof, publicSignals) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+// MAIN CODE
 
 async function main() {
     console.log("This is going to take some time 😁 ")
 
     // COMPILE CIRCUIT
-    let circuitSource = parseBigInts(jsonCircuit)
+    let circuitSource = deserializeData(serializedCircuit)
 
-    const circuit = new zkSnark.Circuit(circuitSource);
+    const circuit = new zkSnark.Circuit(circuitSource)
 
     // GENERATE SETUP
     let provingKey, verificationKey
-    provingKey = parseBigInts(jsonProvingKey)
-    verificationKey = parseBigInts(jsonVerificationKey)
+    provingKey = deserializeData(serializedProvingKey)
+    verificationKey = deserializeData(serializedVerificationKey)
 
     // GENERATE WITNESS
     const witness = await generateWitness(circuit)
