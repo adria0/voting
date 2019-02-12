@@ -14,6 +14,7 @@
     "url": ""
   },
   "dependencies": {
+    "babel-polyfill": "^6.26.0",
     "big-integer": "^1.6.40",
     "circom": "0.0.24",
     "circomlib": "0.0.5",

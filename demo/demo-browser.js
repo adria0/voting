@@ -1,19 +1,23 @@
+import "babel-polyfill"
 const { FPVoter, FPCensus } = require("../src/franchiseproof.js")
 const zkSnark = require("snarkjs")
 const { bigInt } = zkSnark
+const jsonCircuit = JSON.parse(require("./circuit.json"))
+const jsonProvingKey = JSON.parse(require("./proving_key.json"))
+const jsonVerificationKey = JSON.parse(require("./verification_key.json"))
 
 ///////////////////////////////////////////////////////////////////////////////
 // BIG INT HELPERS
 
-function unstringifyBigInts(o) {
+function parseBigInts(o) {
     if ((typeof (o) == "string") && (/^[0-9]+$/.test(o))) {
         return bigInt(o)
     } else if (Array.isArray(o)) {
-        return o.map(unstringifyBigInts)
+        return o.map(parseBigInts)
     } else if (typeof o == "object") {
         const res = {}
         for (let k in o) {
-            res[k] = unstringifyBigInts(o[k])
+            res[k] = parseBigInts(o[k])
         }
         return res
     } else {
@@ -58,7 +62,7 @@ function createProof(provingKey, witness) {
     // create proof ---------------------------------------------------------
     console.log("😺 createProof() ...")
     console.time("😺 createProof()")
-    // const provingKey = unstringifyBigInts(JSON.parse(fs.readFileSync("proving_key.json", "utf8")))
+    // const provingKey = parseBigInts(JSON.parse(fs.readFileSync("proving_key.json", "utf8")))
     const { protocol } = provingKey
     const { proof, publicSignals } = zkSnark[protocol].genProof(provingKey, witness)
     // fs.writeFileSync("proof.json", JSON.stringify(stringifyBigInts(proof), null, 1), "utf-8")
@@ -87,14 +91,14 @@ async function main() {
     console.log("This is going to take some time 😁 ")
 
     // COMPILE CIRCUIT
-    let circuitSource = unstringifyBigInts(require("./circuit.json"))
+    let circuitSource = parseBigInts(jsonCircuit)
 
     const circuit = new zkSnark.Circuit(circuitSource);
 
     // GENERATE SETUP
     let provingKey, verificationKey
-    provingKey = unstringifyBigInts(require("./proving_key.json"))
-    verificationKey = unstringifyBigInts(require("./verification_key.json"))
+    provingKey = parseBigInts(jsonProvingKey)
+    verificationKey = parseBigInts(jsonVerificationKey)
 
     // GENERATE WITNESS
     const witness = await generateWitness(circuit)
@@ -111,4 +115,3 @@ async function main() {
 }
 
 main()
-

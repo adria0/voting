@@ -24,15 +24,15 @@ function stringifyBigInts(o) {
     }
 }
 
-function unstringifyBigInts(o) {
+function parseBigInts(o) {
     if ((typeof (o) == "string") && (/^[0-9]+$/.test(o))) {
         return bigInt(o)
     } else if (Array.isArray(o)) {
-        return o.map(unstringifyBigInts)
+        return o.map(parseBigInts)
     } else if (typeof o == "object") {
         const res = {}
         for (let k in o) {
-            res[k] = unstringifyBigInts(o[k])
+            res[k] = parseBigInts(o[k])
         }
         return res
     } else {
@@ -55,7 +55,7 @@ function generateSetup(circuit) {
     // generate setup ----------------------------------------------------------
     console.log("😺 generateSetup() ...")
     console.time("😺 generateSetup()")
-    // const circuitSource = unstringifyBigInts(JSON.parse(fs.readFileSync("circuit.json", "utf8")))
+    // const circuitSource = parseBigInts(JSON.parse(fs.readFileSync("circuit.json", "utf8")))
     // const circuit = new zkSnark.Circuit(circuitSource)
     const protocol = "groth"
     if (!zkSnark[protocol]) throw new Error("Invalid protocol")
@@ -102,7 +102,7 @@ function createProof(provingKey, witness) {
     // create proof ---------------------------------------------------------
     console.log("😺 createProof() ...")
     console.time("😺 createProof()")
-    // const provingKey = unstringifyBigInts(JSON.parse(fs.readFileSync("proving_key.json", "utf8")))
+    // const provingKey = parseBigInts(JSON.parse(fs.readFileSync("proving_key.json", "utf8")))
     const { protocol } = provingKey
     const { proof, publicSignals } = zkSnark[protocol].genProof(provingKey, witness)
     // fs.writeFileSync("proof.json", JSON.stringify(stringifyBigInts(proof), null, 1), "utf-8")
@@ -133,13 +133,15 @@ async function main() {
     // COMPILE CIRCUIT
     let circuitSource
     if (fs.existsSync("circuit.json")) {
-        circuitSource = unstringifyBigInts(JSON.parse(fs.readFileSync("circuit.json", "utf8")))
+        // Stringify twice to ease the work of the bundler
+        circuitSource = parseBigInts(JSON.parse(JSON.parse(fs.readFileSync("circuit.json", "utf8"))))
     }
     else {
         const filePath = path.join(__dirname, "./fp20.circom")
         circuitSource = await compileCircuit(filePath)
 
-        fs.writeFileSync("circuit.json", JSON.stringify(stringifyBigInts(circuitSource), null, 1), "utf-8")
+        // Two round stringified strings
+        fs.writeFileSync("circuit.json", JSON.stringify(JSON.stringify(stringifyBigInts(circuitSource)), "utf-8"))
     }
 
     const circuit = new zkSnark.Circuit(circuitSource);
@@ -147,15 +149,18 @@ async function main() {
     // GENERATE SETUP
     let provingKey, verificationKey
     if (fs.existsSync("proving_key.json") && fs.existsSync("verification_key.json")) {
-        provingKey = unstringifyBigInts(JSON.parse(fs.readFileSync("proving_key.json", "utf8")))
-        verificationKey = unstringifyBigInts(JSON.parse(fs.readFileSync("verification_key.json", "utf8")))
+        // Stringify twice to ease the work of the bundler
+        provingKey = parseBigInts(JSON.parse(JSON.parse(fs.readFileSync("proving_key.json", "utf8"))))
+        verificationKey = parseBigInts(JSON.parse(JSON.parse(fs.readFileSync("verification_key.json", "utf8"))))
     }
     else {
         const setup = generateSetup(circuit)
         provingKey = setup.vk_proof
         verificationKey = setup.vk_verifier
-        fs.writeFileSync("proving_key.json", JSON.stringify(stringifyBigInts(provingKey), null, 1), "utf-8")
-        fs.writeFileSync("verification_key.json", JSON.stringify(stringifyBigInts(verificationKey), null, 1), "utf-8")
+
+        // Two round stringified strings
+        fs.writeFileSync("proving_key.json", JSON.stringify(JSON.stringify(stringifyBigInts(provingKey)), "utf-8"))
+        fs.writeFileSync("verification_key.json", JSON.stringify(JSON.stringify(stringifyBigInts(verificationKey)), "utf-8"))
     }
 
     // GENERATE WITNESS
