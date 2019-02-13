@@ -15,10 +15,10 @@ const serializedVerificationKey = require("./verification-key.lzp3.json")
 
 const logMap = {}
 
-function log(text){
+function log(text, ...rest){
     const node = document.querySelector("#content")
     if (node) node.innerText += text + "\n"
-    console.log(text)
+    console.log(text, ...rest)
 }
 
 function logStart(key) {
