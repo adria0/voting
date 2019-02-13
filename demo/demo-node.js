@@ -5,7 +5,7 @@ const zkSnark = require("snarkjs")
 const { bigInt, Circuit } = zkSnark
 const circom = require("circom")
 const { fromByteArray, toByteArray } = require('base64-js')
-const { Lzp3 } = require('compressjs')
+const { Lzp3 } = require('@faithlife/compressjs')
 
 ///////////////////////////////////////////////////////////////////////////////
 // BIG INT HELPERS
@@ -161,7 +161,7 @@ async function main() {
         circuitSource = deserializeData("./circuit.lzp3.json")
     }
     else {
-        const filePath = path.join(__dirname, "./fp20.circom")
+        const filePath = path.join(__dirname, "./voting-circuit.circom")
         circuitSource = await compileCircuit(filePath)
 
         serializeData(circuitSource, "./circuit.lzp3.json")

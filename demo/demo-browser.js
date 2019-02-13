@@ -11,6 +11,47 @@ const serializedProvingKey = require("./proving-key.lzp3.json")
 const serializedVerificationKey = require("./verification-key.lzp3.json")
 
 ///////////////////////////////////////////////////////////////////////////////
+// LOGGING HELPER
+
+const logMap = {}
+
+function log(text){
+    const node = document.querySelector("#content")
+    if (node) node.innerText += text + "\n"
+    console.log(text)
+}
+
+function logStart(key) {
+    const node = document.querySelector("#content")
+    if (logMap[key]) {
+        console.warn(`logStart(${key}) is already defined. Overwriting.`)
+
+        logMap[key] = Date.now()
+        if (node) node.innerText += key + " [restarted]\n"
+    }
+    else {
+        logMap[key] = Date.now()
+        if (node) node.innerText += key + " [started]\n"
+        console.log(key + " [started]")
+    }
+}
+
+function logEnd(key) {
+    if (!logMap[key]) {
+        const node = document.querySelector("#content")
+        if (node) node.innerText += key + " [unstarted]\n"
+        console.warn(`logStart(${key}) not started.`)
+        return
+    }
+
+    const diff = (Date.now() - logMap[key]) / 1000
+    const node = document.querySelector("#content")
+    if (node) node.innerText += `${key} [done in ${diff.toFixed(1)}s]\n`
+    console.log(`${key} [done in ${diff.toFixed(1)}s]`)
+    delete logMap[key]
+}
+
+///////////////////////////////////////////////////////////////////////////////
 // BIG INT HELPERS
 
 function parseBigInts(o) {
@@ -66,35 +107,14 @@ const utf8ArrayToStr = (function () {
     };
 })();
 
-// TODO: REMOVE
-function largeuint8ArrToString(uint8arr, callback) {
-    var bb = new Blob([uint8arr]);
-    var f = new FileReader();
-    f.onload = function (e) {
-        callback(e.target.result);
-    };
-
-    f.readAsText(bb);
-}
-
 function deserializeData(serializedPayload) {
     if (!serializedPayload) throw new Error("Empty payload")
 
     const uncompressedArray = Lzp3.decompressFile(toByteArray(serializedPayload))
 
-    let k = "deserialize-1-" + Math.random()
-    console.time(k)
+    logStart("Deserialize compressed JSON")
     const rawString = utf8ArrayToStr(uncompressedArray)
-    console.timeEnd(k)
-
-
-    // TODO: REMOVE
-
-    k = "deserialize-2-" + Math.random()
-    console.time(k)
-    largeuint8ArrToString(new Uint8Array(uncompressedArray), data => {
-        console.timeEnd(k)
-    })
+    logEnd("Deserialize compressed JSON")
 
     return parseBigInts(JSON.parse(rawString))
 }
@@ -104,8 +124,7 @@ function deserializeData(serializedPayload) {
 
 async function generateWitness(circuit) {
     // ORGANIZER SIDE
-    console.log("😺 generateWitness() ...")
-    console.time("😺 generateWitness()")
+    logStart("😺 generateWitness()")
     const voter = new FPVoter(
         1337,
         "0001020304050607080900010203040506070809000102030405060708090021"
@@ -120,26 +139,23 @@ async function generateWitness(circuit) {
     const input = await voter.getInput(votingId, voteValue, poi)
 
     const witness = circuit.calculateWitness(input)
-    console.timeEnd("😺 generateWitness()")
+    logEnd("😺 generateWitness()")
     return witness
 }
 
 function checkWitness(circuit, witness) {
-    console.log("😺 checkWitness ...")
-    console.time("😺 checkWitness")
+    logStart("😺 checkWitness")
     if (!circuit.checkWitness(witness)) {
         throw new Error("Cannot verify witness")
     }
-    console.timeEnd("😺 checkWitness")
+    logEnd("😺 checkWitness")
 }
 
 function createProof(provingKey, witness) {
-    // create proof ---------------------------------------------------------
-    console.log("😺 createProof() ...")
-    console.time("😺 createProof()")
+    logStart("😺 createProof()")
     const { protocol } = provingKey
     const { proof, publicSignals } = zkSnark[protocol].genProof(provingKey, witness)
-    console.timeEnd("😺 createProof()")
+    logEnd("😺 createProof()")
 
     return {
         proof,
@@ -149,10 +165,10 @@ function createProof(provingKey, witness) {
 
 function isProofValid(verificationKey, proof, publicSignals) {
     console.log("😺 isProofValid() ...")
-    console.time("😺 isProofValid()")
+    logStart("😺 isProofValid()")
     const verificationKeyProtocol = verificationKey.protocol
     const isValid = zkSnark[verificationKeyProtocol].isValid(verificationKey, proof, publicSignals)
-    console.timeEnd("😺 isProofValid()")
+    logEnd("😺 isProofValid()")
 
     return isValid
 }
@@ -161,7 +177,7 @@ function isProofValid(verificationKey, proof, publicSignals) {
 // MAIN CODE
 
 async function main() {
-    console.log("This is going to take some time 😁 ")
+    log("This is going to take some time 😁 ")
 
     // COMPILE CIRCUIT
     let circuitSource = deserializeData(serializedCircuit)
@@ -184,7 +200,7 @@ async function main() {
 
     const validProof = isProofValid(verificationKey, proof, publicSignals)
 
-    console.log("IS VALID:", validProof)
+    log("IS VALID:", validProof)
 }
 
 main()
