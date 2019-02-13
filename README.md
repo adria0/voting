@@ -20,6 +20,10 @@ npx parcel index.html
 
 Open http://localhost:1234 and open the browser's console to see the progress.
 
+## Compressing JSON data
+
+If you want to serialize and compress the JSON artifacts, feel free to check out the [json-compression](https://github.com/adriamb/voting/tree/json-compression/demo) branch
+
 ## Note:
 
 Before `circomlib` is updated, the following changes need to be applied on version `0.0.5`:
