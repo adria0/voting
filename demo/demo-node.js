@@ -4,6 +4,8 @@ const { FPVoter, FPCensus } = require("../src/franchiseproof.js")
 const zkSnark = require("snarkjs")
 const { bigInt, Circuit } = zkSnark
 const circom = require("circom")
+const { fromByteArray, toByteArray } = require('base64-js')
+const { Lzp3 } = require('compressjs')
 
 ///////////////////////////////////////////////////////////////////////////////
 // BIG INT HELPERS
@@ -48,14 +50,22 @@ function serializeData(payload, filePath) {
     else if (!filePath) throw new Error("Empty file path")
 
     // Stringify twice to ease the work of the bundler
-    fs.writeFileSync(filePath, JSON.stringify(JSON.stringify(stringifyBigInts(payload)), "utf-8"))
+    const rawString = JSON.stringify(stringifyBigInts(payload))
+    const compressed = Lzp3.compressFile(Buffer.from(rawString))
+
+    const b64String = fromByteArray(compressed)
+    fs.writeFileSync(filePath, JSON.stringify(b64String))
 }
 
 function deserializeData(filePath) {
     if (!fs.existsSync(filePath)) throw new Error("The file does not exist")
 
     // Two round stringified strings
-    return parseBigInts(JSON.parse(JSON.parse(fs.readFileSync(filePath, "utf8"))))
+    const encodedStr = JSON.parse(fs.readFileSync(filePath, "utf8"))
+    const uncompressedArray = Lzp3.decompressFile(toByteArray(encodedStr))
+    const rawString = Buffer.from(uncompressedArray).toString()
+    
+    return parseBigInts(JSON.parse(rawString))
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -147,32 +157,32 @@ async function main() {
 
     // COMPILE CIRCUIT
     let circuitSource
-    if (fs.existsSync("circuit.json")) {
-        circuitSource = deserializeData("./circuit.json")
+    if (fs.existsSync("circuit.lzp3.json")) {
+        circuitSource = deserializeData("./circuit.lzp3.json")
     }
     else {
         const filePath = path.join(__dirname, "./fp20.circom")
         circuitSource = await compileCircuit(filePath)
 
-        serializeData(circuitSource, "./circuit.json")
+        serializeData(circuitSource, "./circuit.lzp3.json")
     }
 
     const circuit = new Circuit(circuitSource)
 
     // GENERATE SETUP
     let provingKey, verificationKey
-    if (fs.existsSync("proving_key.json") && fs.existsSync("verification_key.json")) {
+    if (fs.existsSync("proving-key.lzp3.json") && fs.existsSync("verification-key.lzp3.json")) {
         // Stringify twice to ease the work of the bundler
-        provingKey = deserializeData("proving_key.json")
-        verificationKey = deserializeData("verification_key.json", "utf8")
+        provingKey = deserializeData("proving-key.lzp3.json")
+        verificationKey = deserializeData("verification-key.lzp3.json", "utf8")
     }
     else {
         const setup = generateSetup(circuit)
         provingKey = setup.provingKey
         verificationKey = setup.verificationKey
 
-        serializeData(provingKey, "./proving_key.json")
-        serializeData(verificationKey, "./verification_key.json")
+        serializeData(provingKey, "./proving-key.lzp3.json")
+        serializeData(verificationKey, "./verification-key.lzp3.json")
     }
 
     // GENERATE WITNESS

@@ -1,12 +1,14 @@
 import "babel-polyfill"
 const { FPVoter, FPCensus } = require("../src/franchiseproof.js")
 const zkSnark = require("snarkjs")
-const { bigInt } = zkSnark
+const { bigInt, Circuit } = zkSnark
+import { toByteArray } from 'base64-js'
+import { Lzp3 } from '@faithlife/compressjs'
 
 // Stored as an all-string JSON
-const serializedCircuit = require("./circuit.json")
-const serializedProvingKey = require("./proving_key.json")
-const serializedVerificationKey = require("./verification_key.json")
+const serializedCircuit = require("./circuit.lzp3.json")
+const serializedProvingKey = require("./proving-key.lzp3.json")
+const serializedVerificationKey = require("./verification-key.lzp3.json")
 
 ///////////////////////////////////////////////////////////////////////////////
 // BIG INT HELPERS
@@ -30,8 +32,71 @@ function parseBigInts(o) {
 ///////////////////////////////////////////////////////////////////////////////
 // DATA EN/DECODING HELPERS
 
-function deserializeData(payload) {
-    return parseBigInts(JSON.parse(payload))
+const utf8ArrayToStr = (function () {
+    var charCache = new Array(128);  // Preallocate the cache for the common single byte chars
+    var charFromCodePt = String.fromCodePoint || String.fromCharCode;
+    var result = [];
+
+    return function (array) {
+        var codePt, byte1;
+        var buffLen = array.length;
+
+        result.length = 0;
+
+        for (var i = 0; i < buffLen;) {
+            byte1 = array[i++];
+
+            if (byte1 <= 0x7F) {
+                codePt = byte1;
+            } else if (byte1 <= 0xDF) {
+                codePt = ((byte1 & 0x1F) << 6) | (array[i++] & 0x3F);
+            } else if (byte1 <= 0xEF) {
+                codePt = ((byte1 & 0x0F) << 12) | ((array[i++] & 0x3F) << 6) | (array[i++] & 0x3F);
+            } else if (String.fromCodePoint) {
+                codePt = ((byte1 & 0x07) << 18) | ((array[i++] & 0x3F) << 12) | ((array[i++] & 0x3F) << 6) | (array[i++] & 0x3F);
+            } else {
+                codePt = 63;    // Cannot convert four byte code points, so use "?" instead
+                i += 3;
+            }
+
+            result.push(charCache[codePt] || (charCache[codePt] = charFromCodePt(codePt)));
+        }
+
+        return result.join('');
+    };
+})();
+
+// TODO: REMOVE
+function largeuint8ArrToString(uint8arr, callback) {
+    var bb = new Blob([uint8arr]);
+    var f = new FileReader();
+    f.onload = function (e) {
+        callback(e.target.result);
+    };
+
+    f.readAsText(bb);
+}
+
+function deserializeData(serializedPayload) {
+    if (!serializedPayload) throw new Error("Empty payload")
+
+    const uncompressedArray = Lzp3.decompressFile(toByteArray(serializedPayload))
+
+    let k = "deserialize-1-" + Math.random()
+    console.time(k)
+    const rawString = utf8ArrayToStr(uncompressedArray)
+    console.timeEnd(k)
+
+
+    // TODO: REMOVE
+
+    k = "deserialize-2-" + Math.random()
+    console.time(k)
+    largeuint8ArrToString(new Uint8Array(uncompressedArray), data => {
+        console.timeEnd(k)
+    })
+
+    return parseBigInts(JSON.parse(rawString))
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -101,7 +166,7 @@ async function main() {
     // COMPILE CIRCUIT
     let circuitSource = deserializeData(serializedCircuit)
 
-    const circuit = new zkSnark.Circuit(circuitSource)
+    const circuit = new Circuit(circuitSource)
 
     // GENERATE SETUP
     let provingKey, verificationKey

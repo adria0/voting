@@ -14,6 +14,7 @@
     "url": ""
   },
   "dependencies": {
+    "@faithlife/compressjs": "https://github.com/Faithlife/compressjs/archive/19652f100671e559d7731980c26cd06a7e999b8d.tar.gz",
     "babel-polyfill": "^6.26.0",
     "big-integer": "^1.6.40",
     "circom": "0.0.24",
