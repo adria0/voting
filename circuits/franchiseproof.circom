@@ -1,11 +1,10 @@
-include "../node_modules/circomlib/circuits/mimc.circom";
+include "../node_modules/circomlib/circuits/babyjub.circom";
+include "../node_modules/circomlib/circuits/poseidon.circom";
 include "../node_modules/circomlib/circuits/bitify.circom";
 include "../node_modules/circomlib/circuits/escalarmulfix.circom";
-include "../node_modules/circomlib/circuits/eddsamimc.circom";
+include "../node_modules/circomlib/circuits/eddsaposeidon.circom";
 include "../node_modules/circomlib/circuits/smt/smtverifier.circom";
 include "../node_modules/circomlib/circuits/smt/smtprocessor.circom";
-
-include "babypbk.circom";
 
 template FranchiseProof(nLevels) {
 
@@ -30,8 +29,7 @@ template FranchiseProof(nLevels) {
     pbk.in <== privateKey;
 
     // -- verify vote signature  ---------------------------------------
-
-    component sigVerification = EdDSAMiMCVerifier();
+    component sigVerification = EdDSAPoseidonVerifier();
     sigVerification.enabled <== 1;
 
     // signer public key (extract from private key)
@@ -68,15 +66,14 @@ template FranchiseProof(nLevels) {
     // key and value 
     smtCensusInclusion.key <== censusIdx;
 
-    component hashAxAy = MultiMiMC7(2, 91);
-    hashAxAy.in[0] <== pbk.Ax;
-    hashAxAy.in[1] <== pbk.Ay;
+    component hashAxAy = Poseidon(2,6,8,57);
+    hashAxAy.inputs[0] <== pbk.Ax;
+    hashAxAy.inputs[1] <== pbk.Ay;
     smtCensusInclusion.value <== hashAxAy.out;
 
     // -- verify nullifier integrity -----------------------------------
-    component hashPvkVid = MultiMiMC7(2, 91);
-    hashPvkVid.in[0] <== privateKey;
-    hashPvkVid.in[1] <== votingId ;
+    component hashPvkVid = Poseidon(2,6,8,57);
+    hashPvkVid.inputs[0] <== privateKey;
+    hashPvkVid.inputs[1] <== votingId ;
     nullifier === hashPvkVid.out;
-
 }

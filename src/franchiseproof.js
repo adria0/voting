@@ -1,7 +1,9 @@
-const bigInt = require("snarkjs").bigInt;
+const bigInt = require("../node_modules/snarkjs").bigInt;
 const { assert } = require("chai");
 const createBlakeHash = require("blake-hash");
-const { babyJub, eddsa, smt, mimc7 } = require("circomlib");
+const { babyJub, eddsa, smt, poseidon } = require("../node_modules/circomlib");
+
+const hash = poseidon.createHash(6, 8, 57);
 
 class FPCensus {
     constructor(levels) {
@@ -35,14 +37,14 @@ class FPVoter {
 
     async getPublicKeyHash() {
         const A = babyJub.mulPointEscalar(babyJub.Base8, await this._derivedPvk());
-        return mimc7.multiHash([A[0], A[1]]);
+        return hash([A[0], A[1]]);
     }
 
     async getInput(votingId, voteValue, proofOfInclusion) {
 
         const privateKey = await this._derivedPvk()
-        const nullifier = mimc7.multiHash([privateKey, votingId]);
-        const signature = eddsa.signMiMC(this.rawpvk, voteValue);
+        const nullifier = hash([privateKey, votingId]);
+        const signature = eddsa.signPoseidon(this.rawpvk, voteValue);
 
         return {
             privateKey,
