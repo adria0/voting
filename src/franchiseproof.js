@@ -5,10 +5,19 @@ const { babyJub, eddsa, smt, poseidon } = require("../node_modules/circomlib");
 
 const hash = poseidon.createHash(6, 8, 57);
 
+function genKeyPair(rawpvkHex) {
+    const rawpvk = Buffer.from(rawpvkHex, "hex");
+    const rawpvkHash = eddsa.pruneBuffer(createBlakeHash("blake512").update(rawpvk).digest().slice(0, 32));
+    const pvk = bigInt.leBuff2int(rawpvkHash).shr(3);
+    const A = babyJub.mulPointEscalar(babyJub.Base8, pvk);
+    return { rawpvk , pvk , pbk : { x: A[0], y: A[1] } }
+}
+
 class FPCensus {
-    constructor(levels) {
+    constructor(levels, globalCommitmentData) {
         this.levels = levels;
         this.tree = null;
+        this.key = genKeyPair(globalCommitmentData)
     }
     async add(idx, publicKeyHash) {
         if (this.tree === null) {
@@ -21,33 +30,31 @@ class FPCensus {
         assert(res.found);
         let siblings = res.siblings;
         while (siblings.length < this.levels) siblings.push(bigInt(0));
-        return { root: this.tree.root, siblings: siblings };
+        return {
+            root: this.tree.root,
+            siblings: siblings,
+            globalCommitment : this.key.pbk.x
+        };
     }
 }
 
 class FPVoter {
-    constructor(idx, rawpvk) {
+    constructor(idx, rawpvkHex) {
         this.idx = idx;
-        this.rawpvk = Buffer.from(rawpvk, "hex");
-    }
-    async _derivedPvk() {
-        const pvk = eddsa.pruneBuffer(createBlakeHash("blake512").update(this.rawpvk).digest().slice(0, 32));
-        return bigInt.leBuff2int(pvk).shr(3);
+        this.key = genKeyPair(rawpvkHex);
     }
 
     async getPublicKeyHash() {
-        const A = babyJub.mulPointEscalar(babyJub.Base8, await this._derivedPvk());
-        return hash([A[0], A[1]]);
+        return hash([this.key.pbk.x, this.key.pbk.y]);
     }
 
     async getInput(votingId, voteValue, proofOfInclusion) {
 
-        const privateKey = await this._derivedPvk()
-        const nullifier = hash([privateKey, votingId]);
-        const signature = eddsa.signPoseidon(this.rawpvk, voteValue);
+        const nullifier = hash([this.key.pvk, votingId]);
+        const signature = eddsa.signPoseidon(this.key.rawpvk, voteValue);
 
         return {
-            privateKey,
+            privateKey : this.key.pvk,
             votingId,
             nullifier,
             censusRoot: proofOfInclusion.root,
@@ -56,7 +63,9 @@ class FPVoter {
             voteSigS: signature.S,
             voteSigR8x: signature.R8[0],
             voteSigR8y: signature.R8[1],
-            voteValue
+            voteValue,
+            globalCommitment : proofOfInclusion.globalCommitment,
+            globalNullifier  : 0,
         }
     }
 }
@@ -65,4 +74,3 @@ module.exports = {
     FPCensus,
     FPVoter
 }
-

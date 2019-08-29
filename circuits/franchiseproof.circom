@@ -1,4 +1,5 @@
 include "../node_modules/circomlib/circuits/babyjub.circom";
+include "../node_modules/circomlib/circuits/comparators.circom";
 include "../node_modules/circomlib/circuits/poseidon.circom";
 include "../node_modules/circomlib/circuits/bitify.circom";
 include "../node_modules/circomlib/circuits/escalarmulfix.circom";
@@ -23,14 +24,26 @@ template FranchiseProof(nLevels) {
     signal         input votingId;
     signal         input nullifier;
 
-    // -- extract public key -------------------------------------------
+    signal         input globalCommitment;
+    signal private input globalNullifier;
 
+    // global nullifier check
+    component gnPbkExtract = BabyPbk();
+    gnPbkExtract.in <== globalNullifier;
+
+    component gnCheck = IsEqual()
+    gnCheck.in[0] <== gnPbkExtract.Ax;
+    gnCheck.in[1] <== globalCommitment;
+
+    signal verify = 1 - gnCheck.out; 
+
+    // -- extract public key -------------------------------------------
     component pbk = BabyPbk();
     pbk.in <== privateKey;
 
     // -- verify vote signature  ---------------------------------------
     component sigVerification = EdDSAPoseidonVerifier();
-    sigVerification.enabled <== 1;
+    sigVerification.enabled <== verify;
 
     // signer public key (extract from private key)
     sigVerification.Ax <== pbk.Ax;
@@ -47,7 +60,7 @@ template FranchiseProof(nLevels) {
     // -- verify public key is in census merkle tree ---------------------
     
     component smtCensusInclusion = SMTVerifier(nLevels);
-    smtCensusInclusion.enabled <== 1;
+    smtCensusInclusion.enabled <== verify;
 
     // check for inclusion (0 => VERIFY INCLUSION, 1=>VERIFY EXCLUSION)
     smtCensusInclusion.fnc <== 0;
@@ -75,5 +88,10 @@ template FranchiseProof(nLevels) {
     component hashPvkVid = Poseidon(2,6,8,57);
     hashPvkVid.inputs[0] <== privateKey;
     hashPvkVid.inputs[1] <== votingId ;
-    nullifier === hashPvkVid.out;
+    
+    component nullifierCheck = ForceEqualIfEnabled();
+    nullifierCheck.enabled <== verify;
+    nullifierCheck.in[0] <== nullifier;
+    nullifierCheck.in[1] <== hashPvkVid.out;
+
 }
