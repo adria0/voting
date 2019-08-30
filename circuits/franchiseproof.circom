@@ -6,8 +6,9 @@ include "../node_modules/circomlib/circuits/escalarmulfix.circom";
 include "../node_modules/circomlib/circuits/eddsaposeidon.circom";
 include "../node_modules/circomlib/circuits/smt/smtverifier.circom";
 include "../node_modules/circomlib/circuits/smt/smtprocessor.circom";
+include "../node_modules/circomlib/circuits/binsum.circom";
 
-template FranchiseProof(nLevels) {
+template FranchiseProof(nLevels, nGlobalNullifiers) {
 
     signal         input censusRoot;
     signal private input censusSiblings[nLevels];
@@ -24,18 +25,34 @@ template FranchiseProof(nLevels) {
     signal         input votingId;
     signal         input nullifier;
 
-    signal         input globalCommitment;
-    signal private input globalNullifier;
+    signal         input globalCommitment[nGlobalNullifiers];
+    signal private input globalNullifier[nGlobalNullifiers];
 
     // global nullifier check
-    component gnPbkExtract = BabyPbk();
-    gnPbkExtract.in <== globalNullifier;
+    component gnPbkExtract[nGlobalNullifiers];
+    component gnCheck[nGlobalNullifiers];
+    signal    correctNullifierCount[nGlobalNullifiers];
 
-    component gnCheck = IsEqual()
-    gnCheck.in[0] <== gnPbkExtract.Ax;
-    gnCheck.in[1] <== globalCommitment;
+    for (var n=0;n<nGlobalNullifiers;n+=1) {
+        gnPbkExtract[n] = BabyPbk();
+        gnPbkExtract[n].in <== globalNullifier[n];
 
-    signal verify = 1 - gnCheck.out; 
+        gnCheck[n] = IsEqual();
+        gnCheck[n].in[0] <== gnPbkExtract[n].Ax;
+        gnCheck[n].in[1] <== globalCommitment[n];
+
+        if (n == 0) {
+            correctNullifierCount[0] <-- gnCheck[n].out;
+        } else {
+            correctNullifierCount[n] <-- gnCheck[n].out + correctNullifierCount[n-1];
+        }
+    }
+
+    component gnQuorumCheck = IsEqual()
+    gnQuorumCheck.in[0] <== correctNullifierCount[nGlobalNullifiers-1];
+    gnQuorumCheck.in[1] <== nGlobalNullifiers;
+
+    signal verify = 1 - gnQuorumCheck.out; 
 
     // -- extract public key -------------------------------------------
     component pbk = BabyPbk();

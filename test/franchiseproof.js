@@ -25,7 +25,7 @@ describe("FranchiseProof", function () {
             "0001020304050607080900010203040506070809000102030405060708090021"
         );
 
-        const census = new FPCensus(10, "0000000000000000000000000000000000000000000000000000000000000000");
+        const census = new FPCensus(10, 2);
         await census.add(voter.idx, await voter.getPublicKeyHash());
 
         const poi = await census.proofOfInclusion(voter.idx);
@@ -44,7 +44,7 @@ describe("FranchiseProof", function () {
             "0001020304050607080900010203040506070809000102030405060708090021"
         );
 
-        const census = new FPCensus(10, "0000000000000000000000000000000000000000000000000000000000000000");
+        const census = new FPCensus(10, 2);
         await census.add(voter.idx, await voter.getPublicKeyHash());
 
         const poi = await census.proofOfInclusion(voter.idx);
@@ -52,11 +52,20 @@ describe("FranchiseProof", function () {
         const voteValue = bigInt(2);
         let input = await voter.getInput(votingId, voteValue, poi);
 
+        // check fails with altered signature
         input.voteSigR8x = bigInt(1);
         assert.throws(()=>circuit.calculateWitness(input));
-
-        input.globalNullifier = census.key.pvk;
+          
+        // check pass with all nullifiers
+        input.globalNullifier = [];
+        for (let n=0;n<census.authorities.length;n++) {
+            input.globalNullifier.push(census.authorities[n].pvk);
+        }
         assert.doesNotThrow(()=>circuit.calculateWitness(input));
+
+        // check fails with one altered nullifier
+        input.globalNullifier[0] = bigInt(1);
+        assert.throws(()=>circuit.calculateWitness(input));
 
     })
 })

@@ -14,10 +14,14 @@ function genKeyPair(rawpvkHex) {
 }
 
 class FPCensus {
-    constructor(levels, globalCommitmentData) {
+    constructor(levels, authorities) {
         this.levels = levels;
         this.tree = null;
-        this.key = genKeyPair(globalCommitmentData)
+        this.authorities = []
+        for (let n=0;n<authorities;n++) {
+            const raw = "000000000000000000000000000000000000000000000000000000000000000"+n;
+            this.authorities.push(genKeyPair(raw));           
+        }
     }
     async add(idx, publicKeyHash) {
         if (this.tree === null) {
@@ -30,10 +34,17 @@ class FPCensus {
         assert(res.found);
         let siblings = res.siblings;
         while (siblings.length < this.levels) siblings.push(bigInt(0));
+        
+        let commitments = [];
+        for (let n=0;n<this.authorities.length;n++) {
+            commitments.push(this.authorities[n].pbk.x);
+        }
+
         return {
             root: this.tree.root,
             siblings: siblings,
-            globalCommitment : this.key.pbk.x
+            commitments : commitments,
+
         };
     }
 }
@@ -53,6 +64,11 @@ class FPVoter {
         const nullifier = hash([this.key.pvk, votingId]);
         const signature = eddsa.signPoseidon(this.key.rawpvk, voteValue);
 
+        let globalNullifiers = []
+        for (let n=0;n<proofOfInclusion.commitments.length;n++) {
+            globalNullifiers.push(0);
+        }
+
         return {
             privateKey : this.key.pvk,
             votingId,
@@ -64,8 +80,8 @@ class FPVoter {
             voteSigR8x: signature.R8[0],
             voteSigR8y: signature.R8[1],
             voteValue,
-            globalCommitment : proofOfInclusion.globalCommitment,
-            globalNullifier  : 0,
+            globalCommitment : proofOfInclusion.commitments,
+            globalNullifier  : globalNullifiers,
         }
     }
 }
