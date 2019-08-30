@@ -8,7 +8,40 @@ include "../node_modules/circomlib/circuits/smt/smtverifier.circom";
 include "../node_modules/circomlib/circuits/smt/smtprocessor.circom";
 include "../node_modules/circomlib/circuits/binsum.circom";
 
-template FranchiseProof(nLevels, nGlobalNullifiers) {
+template NullifierMultisig(N) {
+
+    signal input  commitment[N];
+    signal input  nullifier[N];
+    signal output success;
+
+    component pvk2pbk[N];
+    component pbkcheck[N];
+    signal    count[N];
+
+    for (var n=0;n<N;n+=1) {
+        pvk2pbk[n] = BabyPbk();
+        pvk2pbk[n].in <== nullifier[n];
+
+        pbkcheck[n] = IsEqual();
+        pbkcheck[n].in[0] <== pvk2pbk[n].Ax;
+        pbkcheck[n].in[1] <== commitment[n];
+
+        if (n == 0) {
+            count[0] <-- pbkcheck[n].out;
+        } else {
+            count[n] <-- pbkcheck[n].out + count[n-1];
+        }
+    }
+
+    component countcheck = IsEqual()
+    countcheck.in[0] <== count[N-1];
+    countcheck.in[1] <== N;
+
+    success <== countcheck.out;
+}
+
+
+template FranchiseProof(nLevels, nAuth) {
 
     signal         input censusRoot;
     signal private input censusSiblings[nLevels];
@@ -25,34 +58,16 @@ template FranchiseProof(nLevels, nGlobalNullifiers) {
     signal         input votingId;
     signal         input nullifier;
 
-    signal         input globalCommitment[nGlobalNullifiers];
-    signal private input globalNullifier[nGlobalNullifiers];
+    signal         input gcommitment[nAuth];
+    signal private input gnullifier[nAuth];
 
-    // global nullifier check
-    component gnPbkExtract[nGlobalNullifiers];
-    component gnCheck[nGlobalNullifiers];
-    signal    correctNullifierCount[nGlobalNullifiers];
-
-    for (var n=0;n<nGlobalNullifiers;n+=1) {
-        gnPbkExtract[n] = BabyPbk();
-        gnPbkExtract[n].in <== globalNullifier[n];
-
-        gnCheck[n] = IsEqual();
-        gnCheck[n].in[0] <== gnPbkExtract[n].Ax;
-        gnCheck[n].in[1] <== globalCommitment[n];
-
-        if (n == 0) {
-            correctNullifierCount[0] <-- gnCheck[n].out;
-        } else {
-            correctNullifierCount[n] <-- gnCheck[n].out + correctNullifierCount[n-1];
-        }
+    component gnullcheck = NullifierMultisig(nAuth);
+    for (var n=0;n<nAuth;n++)  {
+        gnullcheck.commitment[n] <== gcommitment[n];
+        gnullcheck.nullifier[n] <== gnullifier[n];
     }
 
-    component gnQuorumCheck = IsEqual()
-    gnQuorumCheck.in[0] <== correctNullifierCount[nGlobalNullifiers-1];
-    gnQuorumCheck.in[1] <== nGlobalNullifiers;
-
-    signal verify = 1 - gnQuorumCheck.out; 
+    signal verify = 1 - gnullcheck.success; 
 
     // -- extract public key -------------------------------------------
     component pbk = BabyPbk();

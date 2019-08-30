@@ -57,14 +57,14 @@ describe("FranchiseProof", function () {
         assert.throws(()=>circuit.calculateWitness(input));
           
         // check pass with all nullifiers
-        input.globalNullifier = [];
+        input.gnullifier = [];
         for (let n=0;n<census.authorities.length;n++) {
-            input.globalNullifier.push(census.authorities[n].pvk);
+            input.gnullifier.push(census.authorities[n].pvk);
         }
         assert.doesNotThrow(()=>circuit.calculateWitness(input));
 
         // check fails with one altered nullifier
-        input.globalNullifier[0] = bigInt(1);
+        input.gnullifier[0] = bigInt(1);
         assert.throws(()=>circuit.calculateWitness(input));
 
     })

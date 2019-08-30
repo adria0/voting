@@ -80,8 +80,8 @@ class FPVoter {
             voteSigR8x: signature.R8[0],
             voteSigR8y: signature.R8[1],
             voteValue,
-            globalCommitment : proofOfInclusion.commitments,
-            globalNullifier  : globalNullifiers,
+            gcommitment : proofOfInclusion.commitments,
+            gnullifier  : globalNullifiers,
         }
     }
 }
